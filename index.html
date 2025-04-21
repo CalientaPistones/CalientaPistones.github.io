@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pedir Canción</title>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family:sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input, button, textarea { padding: 8px; margin: 5px 0; width: 100%; }
+    .admin-controls { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
+    .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
+    .validada { background-color: #d1ffd1; }
+    .no-validada { background-color: #ffd1d1; }
+    #estadoPeticion { margin-top: 10px; font-weight: bold; }
+    .respuesta { font-style: italic; margin-top: 5px; color: #444; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+  <h1>🎶 Pide <strong>TU</strong> canción</h1>
+
+  <div id="formulario">
+    <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
+     <input type="text" id="claveInput" placeholder="Introduce Calienta Pistones" /> 
+    <button onclick="enviarPeticion()">Enviar</button>
+    <div id="estadoPeticion"></div>
+  </div>
+
+  <div class="admin-controls">
+    <h2><img src= "https://i.imgur.com/7FgCdqt_d.jpeg"alt="Logo Administrador" style="height: 40px; width: auto;"> Administrador
+  </h2>
+    <input type="password" id="contrasenaInput" placeholder="Contraseña admin" />
+    <button onclick="activarAdmin()">Entrar</button>
+  </div>
+
+  <div id="adminPanel" style="display:none;">
+    <h3>Peticiones recibidas</h3>
+    <div id="listaPeticiones"></div>
+  </div>
+
+  <script>
+    // Reemplaza con tu configuración de Firebase
+    const firebaseConfig = {
+    apiKey: "AIzaSyCMAvzPVugDFetiXe5Qm4QExWBpDGohWMo",
+    authDomain: "eventos-online-cp.firebaseapp.com",
+    projectId: "eventos-online-cp",
+    storageBucket: "eventos-online-cp.firebasestorage.app",
+    messagingSenderId: "673027152468",
+    appId: "1:673027152468:web:755a1f49acd6582cf2abc1",
+    measurementId: "G-DPKKCJKZ9K"
+  };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const peticionesRef = db.collection("peticiones");
+
+    const estadoDiv = document.getElementById("estadoPeticion");
+
+    function enviarPeticion() {
+      const cancion = document.getElementById("cancionInput").value.trim();
+      const clave = document.getElementById("claveInput").value.trim();
+      const claveCorrecta = "Sabado"; // <- puedes cambiarla por la que quieras
+
+      
+      if (cancion === "") return alert("Por favor, escribe una canción.");
+      if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
+
+      
+      peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
+        localStorage.setItem("peticionID", docRef.id);
+        escucharEstadoUsuario(docRef.id);
+      });
+      
+      document.getElementById("cancionInput").value = "";
+      document.getElementById("claveInput").value = "";
+    }
+
+    function escucharEstadoUsuario(id) {
+      peticionesRef.doc(id).onSnapshot(doc => {
+        const data = doc.data();
+        if (!data) return;
+        let mensaje = "";
+        if (data.validada === true) {
+          mensaje = "✅ ¡Tu canción ha sido aceptada!";
+          estadoDiv.style.color = "green";
+        } else if (data.validada === false) {
+          mensaje = "❌ Tu canción no ha sido aceptada aún.";
+          estadoDiv.style.color = "red";
+        }
+        estadoDiv.innerText = mensaje;
+        if (data.respuesta) {
+          estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
+        }
+      });
+    }
+
+    const peticionGuardada = localStorage.getItem("peticionID");
+    if (peticionGuardada) {
+      escucharEstadoUsuario(peticionGuardada);
+    }
+
+    function activarAdmin() {
+      const pass = document.getElementById("contrasenaInput").value;
+      if (pass === "admin123") {
+        document.getElementById("adminPanel").style.display = "block";
+        escucharPeticiones();
+      } else {
+        alert("Contraseña incorrecta.");
+      }
+    }
+
+    function escucharPeticiones() {
+      peticionesRef.onSnapshot(snapshot => {
+        const contenedor = document.getElementById("listaPeticiones");
+        contenedor.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "peticion " + (data.validada ? "validada" : "no-validada");
+
+          div.innerHTML = `
+            <strong>${data.cancion}</strong>
+            <div style="margin: 5px 0;">
+              <button onclick="validar('${doc.id}', true)">✅</button>
+              <button onclick="validar('${doc.id}', false)">❌</button>
+              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
+            </div>
+            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
+          `;
+          contenedor.appendChild(div);
+        });
+      });
+    }
+
+    function validar(id, estado) {
+      peticionesRef.doc(id).update({ validada: estado });
+    }
+
+    function eliminar(id) {
+      if (confirm("¿Estás seguro de eliminar esta petición?")) {
+        peticionesRef.doc(id).delete();
+      }
+    }
+
+    function responder(id, texto) {
+      peticionesRef.doc(id).update({ respuesta: texto });
+    }
+  </script>
+  <footer style="text-align:center; margin-top: 60px; font-size: 0.9em; color: #777;">
+  <hr style="margin-bottom: 15px;">
+
+  <p>🎵 Creado por @Dani84_vks
+   <br><br><strong><b>Calienta Pistones</b></strong></p>
+
+  <div style="margin-top: 10px;">
+    <a href="https://instagram.com/calientapistones" target="_blank" style="margin: 0 10px; color: #555; text-decoration: none;">📸 Instagram</a>
+    <a href="https://instagram.com/tuning.racing_spain" target="_blank" style="margin: 0 10px; color: #555; text-decoration: none;">📸 Instagram</a>
+    <a href="https://tiktok.com/@calientaPistones" target="_blank" style="margin: 0 10px; color: #555; text-decoration: none;">💻 TikTok</a>
+    <a href="https:daniabvk.wixsite.com/calientapistones
+    <img style="display: block;-webkit-user-select: none;margin: auto;cursor: zoom-out;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;"
+    <a href="mailto:calientapistones@gmail.com" style="margin: 0 10px; color: #555; text-decoration: none;">✉️ Email</a>
+      
+  </div>
+</footer>
+</body>
+</html>
