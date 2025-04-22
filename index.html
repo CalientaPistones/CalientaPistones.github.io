@@ -25,7 +25,7 @@
 
   <div id="formulario">
     <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
-     <input type="text" id="claveInput" placeholder="Introduce Calienta Pistones" /> 
+     <input type="text" id="claveInput" placeholder="Introduce CP" /> 
     <button onclick="enviarPeticion()">Enviar</button>
     <div id="estadoPeticion"></div>
   </div>
@@ -69,7 +69,7 @@
     function enviarPeticion() {
       const cancion = document.getElementById("cancionInput").value.trim();
       const clave = document.getElementById("claveInput").value.trim();
-      const claveCorrecta = "Calienta Pistones"; // <- puedes cambiarla por la que quieras
+      const claveCorrecta = "CP"; // <- puedes cambiarla por la que quieras
 
       
       if (cancion === "") return alert("Por favor, escribe una canción.");
