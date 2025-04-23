@@ -7,7 +7,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family:sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family: 'Poppins', sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, button, textarea { padding: 8px; margin: 5px 0; width: 100%; }
     .admin-controls { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
     .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
@@ -19,9 +19,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <p><h1><br><br><strong><b>Calienta Pistones 🚗🔊 🎵🎵🎵 </b></strong></h1></p>
-  <div style="text-align: center; margin-top: 8px;">
-  <h3>🎶 Pide <strong>tu</strong> Canción🎶 </h3>
+  <h1 style="text-align: center;"><strong>Calienta Pistones 🚗🔊 🎵</strong></h1>
+  <h3 style="text-align: center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
+
   <div id="formulario">
     <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
     <input type="text" id="claveInput" placeholder="Introduce CP" /> 
@@ -30,33 +30,43 @@
   </div>
 
   <div class="admin-controls">
-  <div style="text-align: center; margin-top: 10px;">
-  <p>Escanea el QR para que tu Temazo suene tras ser validado</p>
-  <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px; height: auto;" alt="Código QR">
-  <br>
-  Administrador   
-  </h2>
+    <p style="text-align: center;">Escanea el QR para que tu Temazo suene tras ser validado</p>
+    <div style="text-align: center;">
+      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px;" alt="Código QR">
+    </div>
+    <h3 style="text-align: center;">Administrador</h3>
     <input type="password" id="contrasenaInput" placeholder="Contraseña" />
     <button onclick="activarAdmin()">Entrar</button>
-  </div>
 
-  <div id="adminPanel" style="display:none;">
-    <h3>Peticiones recibidas</h3>
-    <div id="listaPeticiones"></div>
+    <div id="adminPanel" style="display:none;">
+      <h3>Peticiones recibidas</h3>
+      <div id="listaPeticiones"></div>
+    </div>
   </div>
 
   <script>
-    // Reemplaza con tu configuración de Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
       authDomain: "pide-tu-temazo.firebaseapp.com",
-      databaseURL: "https://pide-tu-temazo-default-rtdb.firebaseio.com",
       projectId: "pide-tu-temazo",
-      storageBucket: "pide-tu-temazo.firebasestorage.app",
+      storageBucket: "pide-tu-temazo.appspot.com",
       messagingSenderId: "1030971206848",
-      appId:
+      appId: "1:1030971206848:web:0af3d1af966903727d5125"
+    };
 
-  
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const peticionesRef = db.collection("peticiones");
+    const estadoDiv = document.getElementById("estadoPeticion");
+
+    function enviarPeticion() {
+      const cancion = document.getElementById("cancionInput").value.trim();
+      const clave = document.getElementById("claveInput").value.trim();
+      const claveCorrecta = "CP";
+
+      if (cancion === "") return alert("Por favor
+
+     
    
    
     
