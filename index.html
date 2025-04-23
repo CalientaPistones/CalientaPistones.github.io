@@ -109,16 +109,6 @@
       escucharEstadoUsuario(peticionGuardada);
     }
 
-    function activarAdmin() {
-      const pass = document.getElementById("contrasenaInput").value;
-      if (pass === "admin123") {
-        document.getElementById("adminPanel").style.display = "block";
-        escucharPeticiones();
-      } else {
-        alert("Contraseña incorrecta.");
-      }
-    }
-
     function escucharPeticiones() {
       peticionesRef.onSnapshot(snapshot => {
         const contenedor = document.getElementById("listaPeticiones");
