@@ -13,164 +13,186 @@
     .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
     .validada { background-color: #d1ffd1; }
     .no-validada { background-color: #ffd1d1; }
-    .pendiente { background-color: #f2f2f2; }
-    .respuesta { font-style: italic; margin-top: 5px; color: #444; }
     #estadoPeticion { margin-top: 10px; font-weight: bold; }
+    .respuesta { font-style: italic; margin-top: 5px; color: #444; }
+    .historial-item { padding: 8px; margin: 5px 0; border-radius: 5px; }
+    .historial-verde { background-color: #d1ffd1; }
+    .historial-rojo { background-color: #ffd1d1; }
+    .historial-neutro { background-color: #f0f0f0; }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">Calienta Pistones 🚗🔊</h1>
+  <h1 style="text-align:center;">Calienta Pistones 🚗🔊 🎵</h1>
   <h3 style="text-align:center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
 
   <div id="formulario">
-    <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
-    <input type="text" id="claveInput" placeholder="Introduce CP" />
+    <input type="text" id="cancionInput" placeholder="Nombre de la canción y autor" />
+    <input type="text" id="claveInput" placeholder="Introduce CP" /> 
     <button onclick="enviarPeticion()">Enviar</button>
     <div id="estadoPeticion"></div>
+    <h4>🎧 Tu Historial:</h4>
+    <div id="historialUsuario"></div>
   </div>
 
-  <h3 style="margin-top: 30px;">📜 Historial de tus peticiones:</h3>
-  <div id="historialUsuario"></div>
+  <audio id="sonidoNuevo" src="https://www.soundjay.com/button/sounds/beep-07.mp3" preload="auto"></audio>
 
   <div class="admin-controls">
+    <p style="text-align:center;">Escanea el QR para que tu temazo suene tras ser validado</p>
+    <div style="text-align: center;">
+      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,enc_avif/qrcode.png" style="width: 120px;" alt="Código QR">
+    </div>
     <h3 style="text-align:center;">Administrador</h3>
     <input type="password" id="contrasenaInput" placeholder="Contraseña" />
     <button onclick="activarAdmin()">Entrar</button>
-
     <div id="adminPanel" style="display:none;">
       <h3>Peticiones recibidas</h3>
       <div id="listaPeticiones"></div>
     </div>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
-      authDomain: "pide-tu-temazo.firebaseapp.com",
-      projectId: "pide-tu-temazo",
-    };
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
+    authDomain: "pide-tu-temazo.firebaseapp.com",
+    projectId: "pide-tu-temazo",
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const peticionesRef = db.collection("peticiones");
-    const estadoDiv = document.getElementById("estadoPeticion");
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const peticionesRef = db.collection("peticiones");
+  const estadoDiv = document.getElementById("estadoPeticion");
 
-    function enviarPeticion() {
-      const cancion = document.getElementById("cancionInput").value.trim();
-      const clave = document.getElementById("claveInput").value.trim();
-      const claveCorrecta = "CP";
+  let peticionActualID = null;
 
-      if (!cancion) return alert("Por favor, escribe una canción.");
-      if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
+  function enviarPeticion() {
+    const cancion = document.getElementById("cancionInput").value.trim();
+    const clave = document.getElementById("claveInput").value.trim();
+    const claveCorrecta = "CP";
 
-      peticionesRef.add({ cancion, validada: null, respuesta: "" }).then(docRef => {
-        let historial = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
-        historial.push(docRef.id);
-        localStorage.setItem("peticionesHistorial", JSON.stringify(historial));
+    if (cancion === "") return alert("Por favor, escribe una canción.");
+    if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
 
-        localStorage.setItem("peticionID", docRef.id);
-        escucharEstadoUsuario(docRef.id);
-        setTimeout(mostrarHistorialUsuario, 300); // 🔁 delay para esperar a que se cree
-      });
+    peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
+      localStorage.setItem("peticionID", docRef.id);
+      peticionActualID = docRef.id;
+      escucharEstadoUsuario(docRef.id);
+      cargarHistorial();
+    });
 
-      document.getElementById("cancionInput").value = "";
-      document.getElementById("claveInput").value = "";
-    }
+    document.getElementById("cancionInput").value = "";
+    document.getElementById("claveInput").value = "";
+  }
 
-    function escucharEstadoUsuario(id) {
-      peticionesRef.doc(id).onSnapshot(doc => {
-        const data = doc.data();
-        if (!data) return;
-        let mensaje = "";
-        if (data.validada === true) {
-          mensaje = "✅ ¡Tu canción ha sido aceptada!";
-          estadoDiv.style.color = "green";
-        } else if (data.validada === false) {
-          mensaje = "❌ Tu canción fue rechazada.";
-          estadoDiv.style.color = "red";
-        } else {
-          mensaje = "⏳ Tu canción está pendiente.";
-          estadoDiv.style.color = "gray";
-        }
-        estadoDiv.innerText = mensaje;
-        if (data.respuesta) {
-          estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
-        }
-      });
-    }
+  function escucharEstadoUsuario(id) {
+    peticionesRef.doc(id).onSnapshot(doc => {
+      const data = doc.data();
+      if (!data) return;
 
-    function mostrarHistorialUsuario() {
-      const contenedor = document.getElementById("historialUsuario");
-      contenedor.innerHTML = "";
-      let historial = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
-      historial.forEach(id => {
-        peticionesRef.doc(id).get().then(doc => {
-          const data = doc.data();
-          if (!data) return;
-          const div = document.createElement("div");
-          div.className = "peticion " + (data.validada === true ? "validada" : (data.validada === false ? "no-validada" : "pendiente"));
-          div.innerHTML = `
-            <strong>${data.cancion}</strong>
-            <div class='respuesta'>${data.respuesta || "Sin respuesta aún."}</div>
-          `;
-          contenedor.appendChild(div);
-        });
-      });
-    }
+      let mensaje = data.validada ? "✅ ¡Tu canción ha sido aceptada!" : "❌ Tu canción no ha sido aceptada aún.";
+      estadoDiv.style.color = data.validada ? "green" : "red";
+      estadoDiv.innerHTML = mensaje;
 
-    function activarAdmin() {
-      const pass = document.getElementById("contrasenaInput").value;
-      if (pass === "admin123") {
-        document.getElementById("adminPanel").style.display = "block";
-        escucharPeticiones();
-      } else {
-        alert("Contraseña incorrecta.");
+      if (data.respuesta) {
+        estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
       }
-    }
 
-    function escucharPeticiones() {
+      cargarHistorial();
+    });
+  }
+
+  function cargarHistorial() {
+    const id = localStorage.getItem("peticionID");
+    if (!id) return;
+
+    peticionesRef.doc(id).onSnapshot(doc => {
+      const data = doc.data();
+      if (!data) return;
+
+      const historialDiv = document.getElementById("historialUsuario");
+      historialDiv.innerHTML = "";
+
+      const div = document.createElement("div");
+      let clase = "historial-neutro";
+      if (data.validada === true) clase = "historial-verde";
+      else if (data.validada === false) clase = "historial-rojo";
+
+      div.className = "historial-item " + clase;
+      div.innerHTML = `<strong>${data.cancion}</strong><br/>${data.respuesta ? "💬 " + data.respuesta : ""}`;
+      historialDiv.appendChild(div);
+    });
+  }
+
+  const guardada = localStorage.getItem("peticionID");
+  if (guardada) {
+    peticionActualID = guardada;
+    escucharEstadoUsuario(guardada);
+    cargarHistorial();
+  }
+
+  let peticionesCargadas = new Set();
+
+  function activarAdmin() {
+    const pass = document.getElementById("contrasenaInput").value;
+    if (pass === "admin123") {
+      document.getElementById("adminPanel").style.display = "block";
+      escucharPeticiones();
+    } else {
+      alert("Contraseña incorrecta.");
+    }
+  }
+
+  function escucharPeticiones() {
+    peticionesRef.onSnapshot(snapshot => {
       const contenedor = document.getElementById("listaPeticiones");
-      peticionesRef.onSnapshot(snapshot => {
-        contenedor.innerHTML = "";
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement("div");
-          div.className = "peticion " + (data.validada === true ? "validada" : (data.validada === false ? "no-validada" : "pendiente"));
-          div.innerHTML = `
-            <strong>${data.cancion}</strong>
-            <div style="margin: 5px 0;">
-              <button onclick="validar('${doc.id}', true)">✅</button>
-              <button onclick="validar('${doc.id}', false)">❌</button>
-              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
-            </div>
-            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
-          `;
-          contenedor.appendChild(div);
-        });
+      contenedor.innerHTML = "";
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (!peticionesCargadas.has(doc.id)) {
+          peticionesCargadas.add(doc.id);
+          document.getElementById("sonidoNuevo").play();
+        }
+
+        const div = document.createElement("div");
+        div.className = "peticion " + (data.validada ? "validada" : "no-validada");
+
+        div.innerHTML = `
+          <strong>${data.cancion}</strong>
+          <div style="margin: 5px 0;">
+            <button onclick="validar('${doc.id}', true)">✅</button>
+            <button onclick="validar('${doc.id}', false)">❌</button>
+            <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
+          </div>
+          <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
+        `;
+        contenedor.appendChild(div);
       });
-    }
+    });
+  }
 
-    function validar(id, estado) {
-      peticionesRef.doc(id).update({ validada: estado });
-    }
+  function validar(id, estado) {
+    peticionesRef.doc(id).update({ validada: estado });
+  }
 
-    function eliminar(id) {
-      if (confirm("¿Estás seguro de eliminar esta petición?")) {
-        peticionesRef.doc(id).delete();
-      }
+  function eliminar(id) {
+    if (confirm("¿Estás seguro de eliminar esta petición?")) {
+      peticionesRef.doc(id).delete();
     }
+  }
 
-    function responder(id, texto) {
-      peticionesRef.doc(id).update({ respuesta: texto });
-    }
-
-    // Cargar historial si hay
-    mostrarHistorialUsuario();
-    const peticionGuardada = localStorage.getItem("peticionID");
-    if (peticionGuardada) {
-      escucharEstadoUsuario(peticionGuardada);
-    }
-  </script>
+  function responder(id, texto) {
+    peticionesRef.doc(id).update({ respuesta: texto });
+  }
+</script>
 </body>
 </html>
 
+     
+
+       
+      
+       
+     
+
+  
+   
