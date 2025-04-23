@@ -64,7 +64,98 @@
       const clave = document.getElementById("claveInput").value.trim();
       const claveCorrecta = "CP";
 
-      if (cancion === "") return alert("Por favor
+      if (cancion === "") return alert("Por favor, escribe una canción.");
+      if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
+
+      peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
+        localStorage.setItem("peticionID", docRef.id);
+        escucharEstadoUsuario(docRef.id);
+      });
+
+      document.getElementById("cancionInput").value = "";
+      document.getElementById("claveInput").value = "";
+    }
+
+    function escucharEstadoUsuario(id) {
+      peticionesRef.doc(id).onSnapshot(doc => {
+        const data = doc.data();
+        if (!data) return;
+        let mensaje = data.validada ? "✅ ¡Tu canción ha sido aceptada!" : "❌ Tu canción no ha sido aceptada aún.";
+        estadoDiv.style.color = data.validada ? "green" : "red";
+        estadoDiv.innerHTML = mensaje;
+        if (data.respuesta) {
+          estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
+        }
+      });
+    }
+
+    const peticionGuardada = localStorage.getItem("peticionID");
+    if (peticionGuardada) {
+      escucharEstadoUsuario(peticionGuardada);
+    }
+
+    function activarAdmin() {
+      const pass = document.getElementById("contrasenaInput").value;
+      if (pass === "admin123") {
+        document.getElementById("adminPanel").style.display = "block";
+        escucharPeticiones();
+      } else {
+        alert("Contraseña incorrecta.");
+      }
+    }
+
+    function escucharPeticiones() {
+      peticionesRef.onSnapshot(snapshot => {
+        const contenedor = document.getElementById("listaPeticiones");
+        contenedor.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "peticion " + (data.validada ? "validada" : "no-validada");
+          div.innerHTML = `
+            <strong>${data.cancion}</strong>
+            <div>
+              <button onclick="validar('${doc.id}', true)">✅</button>
+              <button onclick="validar('${doc.id}', false)">❌</button>
+              <button onclick="eliminar('${doc.id}')">🗑️</button>
+            </div>
+            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
+          `;
+          contenedor.appendChild(div);
+        });
+      });
+    }
+
+    function validar(id, estado) {
+      peticionesRef.doc(id).update({ validada: estado });
+    }
+
+    function eliminar(id) {
+      if (confirm("¿Estás seguro de eliminar esta petición?")) {
+        peticionesRef.doc(id).delete();
+      }
+    }
+
+    function responder(id, texto) {
+      peticionesRef.doc(id).update({ respuesta: texto });
+    }
+  </script>
+
+  <footer style="text-align:center; margin-top: 60px; font-size: 0.9em; color: #777;">
+    <hr style="margin-bottom: 15px;">
+    <div>
+      <a href="https://instagram.com/calientapistones" target="_blank">📸 CalientaPistones</a> |
+      <a href="https://tiktok.com/@calientapistones" target="_blank">💻 TikTok</a> |
+      <a href="https://instagram.com/tuning.racing_spain" target="_blank">📸 Tuning.racing_Spain</a> |
+      <a href="mailto:calientapistones@gmail.com">✉️ Email</a>
+    </div>
+    <p style="margin-top: 10px;">
+      Visita nuestra web: 
+      <a href="https://daniabvk.wixsite.com/calientapistones/inicio" target="_blank">Calienta Pistones💻</a>
+    </p>
+  </footer>
+</body>
+</html>
 
      
    
