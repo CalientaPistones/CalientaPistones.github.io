@@ -7,10 +7,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family:sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family: 'Poppins', sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, button, textarea { padding: 8px; margin: 5px 0; width: 100%; }
     .admin-controls { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
-    .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
+    .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px; }
     .validada { background-color: #d1ffd1; }
     .no-validada { background-color: #ffd1d1; }
     #estadoPeticion { margin-top: 10px; font-weight: bold; }
@@ -19,32 +19,33 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1><strong><b>Calienta Pistones 🚗🔊 🎵🎵🎵 </b></strong></h1>
-  <div style="text-align: center; margin-top: 8px;">
-    <h3>🎶 Pide <strong>tu</strong> Canción🎶 </h3>
-    <div id="formulario">
-      <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
-      <input type="text" id="claveInput" placeholder="Introduce CP" /> 
-      <button onclick="enviarPeticion()">Enviar</button>
-      <div id="estadoPeticion"></div>
+  <h1 style="text-align: center;">🎵 Calienta Pistones 🚗🔊</h1>
+  <h3 style="text-align: center;">🎶 Pide <strong>tu</strong> canción 🎶</h3>
+
+  <div id="formulario">
+    <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
+    <input type="text" id="claveInput" placeholder="Introduce CP" /> 
+    <button onclick="enviarPeticion()">Enviar</button>
+    <div id="estadoPeticion"></div>
+  </div>
+
+  <div id="historialUsuario" style="margin-top: 30px;">
+    <h3>🎧 Tu historial de peticiones</h3>
+    <div id="listaHistorial"></div>
+  </div>
+
+  <div class="admin-controls">
+    <h4 style="text-align: center;">Escanea el QR para que tu temazo suene tras ser validado</h4>
+    <div style="text-align: center;">
+      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px;" alt="Código QR">
     </div>
+    <h4 style="text-align: center;">Administrador</h4>
+    <input type="password" id="contrasenaInput" placeholder="Contraseña" />
+    <button onclick="activarAdmin()">Entrar</button>
 
-    <div class="admin-controls">
-      <div style="text-align: center; margin-top: 10px;">
-        <p>Escanea el QR para que tu Temazo suene tras ser validado</p>
-        <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px; height: auto;" alt="Código QR">
-        <br>
-        Administrador   
-      </h2>
-        <input type="password" id="contrasenaInput" placeholder="Contraseña" />
-        <button onclick="activarAdmin()">Entrar</button>
-      </div>
-
-      <div id="adminPanel" style="display:none;">
-        <h3>Peticiones recibidas</h3>
-        <div id="listaPeticiones"></div>
-      </div>
-
+    <div id="adminPanel" style="display:none;">
+      <h3>Peticiones recibidas</h3>
+      <div id="listaPeticiones"></div>
     </div>
   </div>
 
@@ -52,32 +53,32 @@
     const firebaseConfig = {
       apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
       authDomain: "pide-tu-temazo.firebaseapp.com",
-      databaseURL: "https://pide-tu-temazo-default-rtdb.firebaseio.com",
       projectId: "pide-tu-temazo",
-      storageBucket: "pide-tu-temazo.firebasestorage.app",
-      messagingSenderId: "1030971206848",
-      appId: "1:1030971206848:web:0af3d1af966903727d5125",
-      measurementId: "G-HDGTVMWBKG"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const peticionesRef = db.collection("peticiones");
+
     const estadoDiv = document.getElementById("estadoPeticion");
 
     function enviarPeticion() {
       const cancion = document.getElementById("cancionInput").value.trim();
       const clave = document.getElementById("claveInput").value.trim();
-      const claveCorrecta = "CP"; // puedes cambiarla por la que quieras
+      const claveCorrecta = "CP";
 
-      if (cancion === "") return alert("Por favor, escribe una canción.");
+      if (!cancion) return alert("Por favor, escribe una canción.");
       if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
 
       peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
         localStorage.setItem("peticionID", docRef.id);
+        const historial = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
+        historial.push(docRef.id);
+        localStorage.setItem("peticionesHistorial", JSON.stringify(historial));
         escucharEstadoUsuario(docRef.id);
+        mostrarHistorialUsuario();
       });
-      
+
       document.getElementById("cancionInput").value = "";
       document.getElementById("claveInput").value = "";
     }
@@ -102,9 +103,45 @@
     }
 
     const peticionGuardada = localStorage.getItem("peticionID");
-    if (peticionGuardada) {
-      escucharEstadoUsuario(peticionGuardada);
+    if (peticionGuardada) escucharEstadoUsuario(peticionGuardada);
+
+    function mostrarHistorialUsuario() {
+      const contenedor = document.getElementById("listaHistorial");
+      contenedor.innerHTML = "";
+
+      const peticionesGuardadas = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
+
+      if (peticionesGuardadas.length === 0) {
+        contenedor.innerHTML = "<p>No has solicitado ninguna canción todavía.</p>";
+        return;
+      }
+
+      peticionesGuardadas.forEach(id => {
+        peticionesRef.doc(id).get().then(doc => {
+          if (!doc.exists) return;
+
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "peticion";
+
+          if (data.validada === true) {
+            div.style.backgroundColor = "#d1ffd1";
+          } else if (data.validada === false) {
+            div.style.backgroundColor = "#ffd1d1";
+          } else {
+            div.style.backgroundColor = "#eee";
+          }
+
+          div.innerHTML = `
+            <strong>${data.cancion}</strong><br/>
+            ${data.respuesta ? `<em>💬 ${data.respuesta}</em>` : ""}
+          `;
+          contenedor.appendChild(div);
+        });
+      });
     }
+
+    mostrarHistorialUsuario();
 
     function activarAdmin() {
       const pass = document.getElementById("contrasenaInput").value;
@@ -124,22 +161,15 @@
           const data = doc.data();
           const div = document.createElement("div");
           div.className = "peticion " + (data.validada ? "validada" : "no-validada");
-
           div.innerHTML = `
             <strong>${data.cancion}</strong>
-            <div style="margin: 5px 0;">
+            <div>
               <button onclick="validar('${doc.id}', true)">✅</button>
               <button onclick="validar('${doc.id}', false)">❌</button>
-              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
+              <button onclick="eliminar('${doc.id}')">🗑️</button>
             </div>
-            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
+            <textarea onchange="responder('${doc.id}', this.value)" placeholder="Respuesta...">${data.respuesta || ""}</textarea>
           `;
-          // Cambiar color según estado de validación
-          if (data.validada === true) {
-            div.style.backgroundColor = "#d1ffd1"; // verde
-          } else if (data.validada === false) {
-            div.style.backgroundColor = "#ffd1d1"; // rojo
-          }
           contenedor.appendChild(div);
         });
       });
@@ -162,27 +192,20 @@
 
   <footer style="text-align:center; margin-top: 60px; font-size: 0.9em; color: #777;">
     <hr style="margin-bottom: 15px;">
-    <div style="margin-top: 10px;">
-      <a href="https://instagram.com/calientapistones" target="_blank" style="margin: 0 10px; color: #555; text-decoration: none;">📸 CalientaPistones</a>
-      <a href="https://tiktok.com/@calientapistones" target="_blank" style="margin: 0 10px; color: #555; text-decoration: none;">💻 TikTok</a>
-      <a href="https://instagram.com/tuning.racing_spain" target="_blank" style="margin: 0 10px; color: #555; text-decoration: none;">📸 Tuning.racing_Spain</a>
-      <a href="mailto:calientapistones@gmail.com" style="margin: 0 10px; color: #555; text-decoration: none;">✉️ Email</a>
-      <img style="display: block;-webkit-user-select: none;margin: auto;cursor: zoom-out;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;">
+    <div>
+      <a href="https://instagram.com/calientapistones" target="_blank">📸 CalientaPistones</a> |
+      <a href="https://tiktok.com/@calientapistones" target="_blank">🎥 TikTok</a> |
+      <a href="mailto:calientapistones@gmail.com">✉️ Email</a>
+      <p>Visita nuestra web: 
+        <a href="https://daniabvk.wixsite.com/calientapistones/inicio" target="_blank">
+          Calienta Pistones 💻
+        </a>
+      </p>
     </div>
   </footer>
-
 </body>
 </html>
 
-     
-       
-   
-        
-    
-      
-
-
-  
 
 
      
