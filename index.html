@@ -15,26 +15,28 @@
     .no-validada { background-color: #ffd1d1; }
     #estadoPeticion { margin-top: 10px; font-weight: bold; }
     .respuesta { font-style: italic; margin-top: 5px; color: #444; }
-    .historial { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">🎵 Calienta Pistones 🚗🔊</h1>
-  <h3 style="text-align:center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
-
+  <h1 style="text-align:center;"><strong>Calienta Pistones 🚗🔊 🎵</strong></h1>
   <div id="formulario">
+    <h3 style="text-align:center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
     <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
     <input type="text" id="claveInput" placeholder="Introduce CP" />
     <button onclick="enviarPeticion()">Enviar</button>
     <div id="estadoPeticion"></div>
+    <div id="historialDiv" style="margin-top: 20px;"></div>
   </div>
 
-  <div class="historial" id="historialDiv"></div>
-
   <div class="admin-controls">
-    <h3>Administrador</h3>
-    <input type="password" id="contrasenaInput" placeholder="Contraseña" />
-    <button onclick="activarAdmin()">Entrar</button>
+    <div style="text-align: center; margin-top: 10px;">
+      <p>Escanea el QR para que tu Temazo suene tras ser validado</p>
+      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px; height: auto;" alt="Código QR">
+      <br>
+      <h4>Administrador</h4>
+      <input type="password" id="contrasenaInput" placeholder="Contraseña" />
+      <button onclick="activarAdmin()">Entrar</button>
+    </div>
 
     <div id="adminPanel" style="display:none;">
       <h3>Peticiones recibidas</h3>
@@ -47,36 +49,50 @@
       apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
       authDomain: "pide-tu-temazo.firebaseapp.com",
       projectId: "pide-tu-temazo",
+      storageBucket: "pide-tu-temazo.appspot.com",
+      messagingSenderId: "1030971206848",
+      appId: "1:1030971206848:web:0af3d1af966903727d5125",
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const peticionesRef = db.collection("peticiones");
     const estadoDiv = document.getElementById("estadoPeticion");
+    let usuarioID = null;
 
+    // Al enviar la petición, se almacena en Firebase
     function enviarPeticion() {
       const cancion = document.getElementById("cancionInput").value.trim();
       const clave = document.getElementById("claveInput").value.trim();
       const claveCorrecta = "CP";
 
-      if (cancion === "") return alert("Por favor, escribe una canción.");
+      if (!cancion) return alert("Por favor, escribe una canción.");
       if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
 
-      peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
-        // Guardar ID en local
-        const historial = JSON.parse(localStorage.getItem("historialPeticiones") || "[]");
-        historial.push({ id: docRef.id, cancion });
-        localStorage.setItem("historialPeticiones", JSON.stringify(historial));
-        mostrarHistorial();
+      // Verificar si el usuario está logueado
+      if (!usuarioID) {
+        alert("Por favor, inicie sesión.");
+        return;
+      }
 
-        localStorage.setItem("peticionID", docRef.id);
+      // Crear la petición en Firebase
+      peticionesRef.add({
+        usuarioID,
+        cancion,
+        validada: false,
+        respuesta: "",
+        fecha: firebase.firestore.FieldValue.serverTimestamp(),
+      }).then(docRef => {
+        // Escuchar cambios de la petición
         escucharEstadoUsuario(docRef.id);
+        alert("Petición enviada con éxito.");
       });
 
       document.getElementById("cancionInput").value = "";
       document.getElementById("claveInput").value = "";
     }
 
+    // Escuchar estado de la petición en Firebase
     function escucharEstadoUsuario(id) {
       peticionesRef.doc(id).onSnapshot(doc => {
         const data = doc.data();
@@ -85,7 +101,7 @@
         if (data.validada === true) {
           mensaje = "✅ ¡Tu canción ha sido aceptada!";
           estadoDiv.style.color = "green";
-        } else if (data.validada === false) {
+        } else {
           mensaje = "❌ Tu canción no ha sido aceptada aún.";
           estadoDiv.style.color = "red";
         }
@@ -96,11 +112,33 @@
       });
     }
 
-    const peticionGuardada = localStorage.getItem("peticionID");
-    if (peticionGuardada) {
-      escucharEstadoUsuario(peticionGuardada);
+    // Mostrar el historial de peticiones del usuario
+    function mostrarHistorial() {
+      if (!usuarioID) return;
+
+      peticionesRef.where("usuarioID", "==", usuarioID).orderBy("fecha", "desc").get().then(snapshot => {
+        const divHistorial = document.getElementById("historialDiv");
+        divHistorial.innerHTML = "<h4>🎧 Tus Peticiones Anteriores:</h4><ul>";
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          let estadoIcono = "";
+          let color = "";
+          if (data?.validada === true) {
+            estadoIcono = "✅";
+            color = "green";
+          } else if (data?.validada === false) {
+            estadoIcono = "❌";
+            color = "red";
+          }
+          divHistorial.innerHTML += `<li style="color:${color}">${estadoIcono} ${data.cancion}</li>`;
+        });
+
+        divHistorial.innerHTML += "</ul>";
+      });
     }
 
+    // Activar el panel de administrador con contraseña
     function activarAdmin() {
       const pass = document.getElementById("contrasenaInput").value;
       if (pass === "admin123") {
@@ -111,8 +149,9 @@
       }
     }
 
+    // Escuchar las peticiones del admin
     function escucharPeticiones() {
-      peticionesRef.onSnapshot(snapshot => {
+      peticionesRef.orderBy("fecha", "desc").onSnapshot(snapshot => {
         const contenedor = document.getElementById("listaPeticiones");
         contenedor.innerHTML = "";
         snapshot.forEach(doc => {
@@ -133,39 +172,38 @@
       });
     }
 
+    // Validar o rechazar una petición
     function validar(id, estado) {
       peticionesRef.doc(id).update({ validada: estado });
     }
 
+    // Eliminar una petición
     function eliminar(id) {
       if (confirm("¿Estás seguro de eliminar esta petición?")) {
         peticionesRef.doc(id).delete();
       }
     }
 
+    // Responder a una petición
     function responder(id, texto) {
       peticionesRef.doc(id).update({ respuesta: texto });
     }
 
-    function mostrarHistorial() {
-      const historial = JSON.parse(localStorage.getItem("historialPeticiones") || "[]");
-      const divHistorial = document.getElementById("historialDiv");
-      if (historial.length === 0) {
-        divHistorial.innerHTML = "";
-        return;
-      }
-      let html = "<h4>🎧 Tus Peticiones Anteriores:</h4><ul>";
-      historial.forEach(p => {
-        html += `<li>${p.cancion}</li>`;
-      });
-      html += "</ul>";
-      divHistorial.innerHTML = html;
+    // Solicitar un ID de usuario (simulación de login)
+    function solicitarUsuarioID() {
+      // Aquí puedes autenticar con un sistema real de autenticación (email/password, Google Auth, etc.)
+      // Por ahora, vamos a asignar un ID aleatorio por cada sesión de usuario.
+      usuarioID = Math.random().toString(36).substring(2, 10); // Genera un ID aleatorio simple
+      mostrarHistorial();
     }
 
-    mostrarHistorial();
+    // Simula el login de un usuario
+    solicitarUsuarioID();
   </script>
 </body>
 </html>
+
+  
 
 
      
