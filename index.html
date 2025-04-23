@@ -7,39 +7,33 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: 'Poppins', sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family:sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, button, textarea { padding: 8px; margin: 5px 0; width: 100%; }
     .admin-controls { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
-    .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
     .validada { background-color: #d1ffd1; }
     .no-validada { background-color: #ffd1d1; }
-    #estadoPeticion { margin-top: 10px; font-weight: bold; }
+    .pendiente { background-color: #f2f2f2; }
     .respuesta { font-style: italic; margin-top: 5px; color: #444; }
+    #estadoPeticion { margin-top: 10px; font-weight: bold; }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1 style="text-align: center;">🎵 Calienta Pistones 🚗🔊</h1>
-  <h3 style="text-align: center;">🎶 Pide <strong>tu</strong> canción 🎶</h3>
+  <h1 style="text-align:center;">Calienta Pistones 🚗🔊</h1>
+  <h3 style="text-align:center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
 
   <div id="formulario">
     <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
-    <input type="text" id="claveInput" placeholder="Introduce CP" /> 
+    <input type="text" id="claveInput" placeholder="Introduce CP" />
     <button onclick="enviarPeticion()">Enviar</button>
     <div id="estadoPeticion"></div>
   </div>
 
-  <div id="historialUsuario" style="margin-top: 30px;">
-    <h3>🎧 Tu historial de peticiones</h3>
-    <div id="listaHistorial"></div>
-  </div>
+  <h3 style="margin-top: 30px;">📜 Historial de tus peticiones:</h3>
+  <div id="historialUsuario"></div>
 
   <div class="admin-controls">
-    <h4 style="text-align: center;">Escanea el QR para que tu temazo suene tras ser validado</h4>
-    <div style="text-align: center;">
-      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px;" alt="Código QR">
-    </div>
-    <h4 style="text-align: center;">Administrador</h4>
+    <h3 style="text-align:center;">Administrador</h3>
     <input type="password" id="contrasenaInput" placeholder="Contraseña" />
     <button onclick="activarAdmin()">Entrar</button>
 
@@ -59,7 +53,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const peticionesRef = db.collection("peticiones");
-
     const estadoDiv = document.getElementById("estadoPeticion");
 
     function enviarPeticion() {
@@ -70,13 +63,14 @@
       if (!cancion) return alert("Por favor, escribe una canción.");
       if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
 
-      peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
-        localStorage.setItem("peticionID", docRef.id);
-        const historial = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
+      peticionesRef.add({ cancion, validada: null, respuesta: "" }).then(docRef => {
+        let historial = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
         historial.push(docRef.id);
         localStorage.setItem("peticionesHistorial", JSON.stringify(historial));
+
+        localStorage.setItem("peticionID", docRef.id);
         escucharEstadoUsuario(docRef.id);
-        mostrarHistorialUsuario();
+        setTimeout(mostrarHistorialUsuario, 300); // 🔁 delay para esperar a que se cree
       });
 
       document.getElementById("cancionInput").value = "";
@@ -92,8 +86,11 @@
           mensaje = "✅ ¡Tu canción ha sido aceptada!";
           estadoDiv.style.color = "green";
         } else if (data.validada === false) {
-          mensaje = "❌ Tu canción no ha sido aceptada aún.";
+          mensaje = "❌ Tu canción fue rechazada.";
           estadoDiv.style.color = "red";
+        } else {
+          mensaje = "⏳ Tu canción está pendiente.";
+          estadoDiv.style.color = "gray";
         }
         estadoDiv.innerText = mensaje;
         if (data.respuesta) {
@@ -102,46 +99,24 @@
       });
     }
 
-    const peticionGuardada = localStorage.getItem("peticionID");
-    if (peticionGuardada) escucharEstadoUsuario(peticionGuardada);
-
     function mostrarHistorialUsuario() {
-      const contenedor = document.getElementById("listaHistorial");
+      const contenedor = document.getElementById("historialUsuario");
       contenedor.innerHTML = "";
-
-      const peticionesGuardadas = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
-
-      if (peticionesGuardadas.length === 0) {
-        contenedor.innerHTML = "<p>No has solicitado ninguna canción todavía.</p>";
-        return;
-      }
-
-      peticionesGuardadas.forEach(id => {
+      let historial = JSON.parse(localStorage.getItem("peticionesHistorial") || "[]");
+      historial.forEach(id => {
         peticionesRef.doc(id).get().then(doc => {
-          if (!doc.exists) return;
-
           const data = doc.data();
+          if (!data) return;
           const div = document.createElement("div");
-          div.className = "peticion";
-
-          if (data.validada === true) {
-            div.style.backgroundColor = "#d1ffd1";
-          } else if (data.validada === false) {
-            div.style.backgroundColor = "#ffd1d1";
-          } else {
-            div.style.backgroundColor = "#eee";
-          }
-
+          div.className = "peticion " + (data.validada === true ? "validada" : (data.validada === false ? "no-validada" : "pendiente"));
           div.innerHTML = `
-            <strong>${data.cancion}</strong><br/>
-            ${data.respuesta ? `<em>💬 ${data.respuesta}</em>` : ""}
+            <strong>${data.cancion}</strong>
+            <div class='respuesta'>${data.respuesta || "Sin respuesta aún."}</div>
           `;
           contenedor.appendChild(div);
         });
       });
     }
-
-    mostrarHistorialUsuario();
 
     function activarAdmin() {
       const pass = document.getElementById("contrasenaInput").value;
@@ -154,21 +129,21 @@
     }
 
     function escucharPeticiones() {
+      const contenedor = document.getElementById("listaPeticiones");
       peticionesRef.onSnapshot(snapshot => {
-        const contenedor = document.getElementById("listaPeticiones");
         contenedor.innerHTML = "";
         snapshot.forEach(doc => {
           const data = doc.data();
           const div = document.createElement("div");
-          div.className = "peticion " + (data.validada ? "validada" : "no-validada");
+          div.className = "peticion " + (data.validada === true ? "validada" : (data.validada === false ? "no-validada" : "pendiente"));
           div.innerHTML = `
             <strong>${data.cancion}</strong>
-            <div>
+            <div style="margin: 5px 0;">
               <button onclick="validar('${doc.id}', true)">✅</button>
               <button onclick="validar('${doc.id}', false)">❌</button>
-              <button onclick="eliminar('${doc.id}')">🗑️</button>
+              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
             </div>
-            <textarea onchange="responder('${doc.id}', this.value)" placeholder="Respuesta...">${data.respuesta || ""}</textarea>
+            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
           `;
           contenedor.appendChild(div);
         });
@@ -188,28 +163,14 @@
     function responder(id, texto) {
       peticionesRef.doc(id).update({ respuesta: texto });
     }
-  </script>
 
-  <footer style="text-align:center; margin-top: 60px; font-size: 0.9em; color: #777;">
-    <hr style="margin-bottom: 15px;">
-    <div>
-      <a href="https://instagram.com/calientapistones" target="_blank">📸 CalientaPistones</a> |
-      <a href="https://tiktok.com/@calientapistones" target="_blank">🎥 TikTok</a> |
-      <a href="mailto:calientapistones@gmail.com">✉️ Email</a>
-      <p>Visita nuestra web: 
-        <a href="https://daniabvk.wixsite.com/calientapistones/inicio" target="_blank">
-          Calienta Pistones 💻
-        </a>
-      </p>
-    </div>
-  </footer>
+    // Cargar historial si hay
+    mostrarHistorialUsuario();
+    const peticionGuardada = localStorage.getItem("peticionID");
+    if (peticionGuardada) {
+      escucharEstadoUsuario(peticionGuardada);
+    }
+  </script>
 </body>
 </html>
 
-
-
-     
-   
-   
-    
-  
