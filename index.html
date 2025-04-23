@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pedir Canción</title>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <style>
     body { font-family:sans-serif; padding: 20px; max-width: 600px; margin: auto; }
@@ -20,29 +19,30 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1><strong>Calienta Pistones 🚗🔊 🎵🎵🎵</strong></h1>
+  <p><h1><br><br><strong><b>Calienta Pistones 🚗🔊 🎵🎵🎵 </b></strong></h1></p>
   <div style="text-align: center; margin-top: 8px;">
-    <h3>🎶 Pide <strong>tu</strong> Canción 🎶</h3>
-    <div id="formulario">
-      <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
-      <input type="text" id="claveInput" placeholder="Introduce CP" /> 
-      <button onclick="enviarPeticion()">Enviar</button>
-      <div id="estadoPeticion"></div>
-    </div>
+  <h3>🎶 Pide <strong>tu</strong> Canción🎶 </h3>
+  <div id="formulario">
+    <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
+    <input type="text" id="claveInput" placeholder="Introduce CP" /> 
+    <button onclick="enviarPeticion()">Enviar</button>
+    <div id="estadoPeticion"></div>
+  </div>
 
-    <div class="admin-controls">
-      <h3>Acceso administrador</h3>
-      <input type="email" id="emailInput" placeholder="Email del administrador" />
-      <input type="password" id="passwordInput" placeholder="Contraseña" />
-      <button onclick="loginAdmin()">Entrar</button>
-      <button onclick="logout()">Cerrar sesión</button>
-    </div>
+  <div class="admin-controls">
+  <div style="text-align: center; margin-top: 10px;">
+  <p>Escanea el QR para que tu Temazo suene tras ser validado</p>
+  <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px; height: auto;" alt="Código QR">
+  <br>
+  Administrador   
+  </h2>
+    <input type="password" id="contrasenaInput" placeholder="Contraseña" />
+    <button onclick="activarAdmin()">Entrar</button>
+  </div>
 
-    <div id="adminPanel" style="display:none;">
-      <h3>Peticiones recibidas</h3>
-      <div id="listaPeticiones"></div>
-    </div>
-
+  <div id="adminPanel" style="display:none;">
+    <h3>Peticiones recibidas</h3>
+    <div id="listaPeticiones"></div>
   </div>
 
   <script>
@@ -54,112 +54,10 @@
       projectId: "pide-tu-temazo",
       storageBucket: "pide-tu-temazo.firebasestorage.app",
       messagingSenderId: "1030971206848",
-      appId: "1:1030971206848:web:0af3d1af966903727d5125",
-      measurementId: "G-HDGTVMWBKG"
-    };
+      appId:
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const peticionesRef = db.collection("peticiones");
-
-    const estadoDiv = document.getElementById("estadoPeticion");
-
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById("adminPanel").style.display = "block";
-        escucharPeticiones();
-      } else {
-        document.getElementById("adminPanel").style.display = "none";
-      }
-    });
-
-    function loginAdmin() {
-  const email = document.getElementById("emailInput").value;
-  const password = document.getElementById("passwordInput").value;
-
-  console.log("Intentando loguearse con:", email); // Verificación en consola
-
-  firebase.auth().signInWithEmailAndPassword(email, password)
-    .then(() => {
-      alert("Administrador autenticado");
-    })
-    .catch(error => {
-      console.error("Error de login:", error); // Verificación de errores
-      alert("Error: " + error.message);
-    });
-}
-
-
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        alert("Sesión cerrada");
-      });
-    }
-
-    function enviarPeticion() {
-      const cancion = document.getElementById("cancionInput").value.trim();
-      const clave = document.getElementById("claveInput").value.trim();
-      const claveCorrecta = "CP"; // <- puedes cambiarla por la que quieras
-
-      if (cancion === "") return alert("Por favor, escribe una canción.");
-      if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
-
-      peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
-        localStorage.setItem("peticionID", docRef.id);
-        escucharEstadoUsuario(docRef.id);
-      });
-
-      document.getElementById("cancionInput").value = "";
-      document.getElementById("claveInput").value = "";
-    }
-
-    function escucharEstadoUsuario(id) {
-      peticionesRef.doc(id).onSnapshot(doc => {
-        const data = doc.data();
-        if (!data) return;
-        let mensaje = "";
-        if (data.validada === true) {
-          mensaje = "✅ ¡Tu canción ha sido aceptada!";
-          estadoDiv.style.color = "green";
-        } else if (data.validada === false) {
-          mensaje = "❌ Tu canción no ha sido aceptada aún.";
-          estadoDiv.style.color = "red";
-        }
-        estadoDiv.innerText = mensaje;
-        if (data.respuesta) {
-          estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
-        }
-      });
-    }
-
-    const peticionGuardada = localStorage.getItem("peticionID");
-    if (peticionGuardada) {
-      escucharEstadoUsuario(peticionGuardada);
-    }
-
-    function escucharPeticiones() {
-      peticionesRef.onSnapshot(snapshot => {
-        const contenedor = document.getElementById("listaPeticiones");
-        contenedor.innerHTML = "";
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement("div");
-          div.className = "peticion " + (data.validada ? "validada" : "no-validada");
-
-          div.innerHTML = `
-            <strong>${data.cancion}</strong>
-            <div style="margin: 5px 0;">
-              <button onclick="validar('${doc.id}', true)">✅</button>
-              <button onclick="validar('${doc.id}', false)">❌</button>
-              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
-            </div>
-            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
-          `;
-          contenedor.appendChild(div);
-        });
-      });
-    }
-
-    function
-
+  
+   
+   
+    
+  
