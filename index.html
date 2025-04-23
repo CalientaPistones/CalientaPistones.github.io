@@ -7,7 +7,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: 'Poppins', sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family:sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, button, textarea { padding: 8px; margin: 5px 0; width: 100%; }
     .admin-controls { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
     .peticion { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
@@ -15,26 +15,24 @@
     .no-validada { background-color: #ffd1d1; }
     #estadoPeticion { margin-top: 10px; font-weight: bold; }
     .respuesta { font-style: italic; margin-top: 5px; color: #444; }
+    .historial { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1 style="text-align: center;"><strong>Calienta Pistones 🚗🔊 🎵</strong></h1>
-  <h3 style="text-align: center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
+  <h1 style="text-align:center;">🎵 Calienta Pistones 🚗🔊</h1>
+  <h3 style="text-align:center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
 
   <div id="formulario">
     <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
-    <input type="text" id="claveInput" placeholder="Introduce CP" /> 
+    <input type="text" id="claveInput" placeholder="Introduce CP" />
     <button onclick="enviarPeticion()">Enviar</button>
     <div id="estadoPeticion"></div>
   </div>
 
+  <div class="historial" id="historialDiv"></div>
+
   <div class="admin-controls">
-    <p style="text-align: center;">Escanea el QR para que tu Temazo suene tras ser validado</p>
-    <div style="text-align: center;">
-      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/qrcode.png" style="width: 120px;" alt="Código QR">
-    </div>
-    <h3 style="text-align: center;">Administrador</h3>
+    <h3>Administrador</h3>
     <input type="password" id="contrasenaInput" placeholder="Contraseña" />
     <button onclick="activarAdmin()">Entrar</button>
 
@@ -49,9 +47,6 @@
       apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
       authDomain: "pide-tu-temazo.firebaseapp.com",
       projectId: "pide-tu-temazo",
-      storageBucket: "pide-tu-temazo.appspot.com",
-      messagingSenderId: "1030971206848",
-      appId: "1:1030971206848:web:0af3d1af966903727d5125"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -68,6 +63,12 @@
       if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
 
       peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
+        // Guardar ID en local
+        const historial = JSON.parse(localStorage.getItem("historialPeticiones") || "[]");
+        historial.push({ id: docRef.id, cancion });
+        localStorage.setItem("historialPeticiones", JSON.stringify(historial));
+        mostrarHistorial();
+
         localStorage.setItem("peticionID", docRef.id);
         escucharEstadoUsuario(docRef.id);
       });
@@ -80,9 +81,15 @@
       peticionesRef.doc(id).onSnapshot(doc => {
         const data = doc.data();
         if (!data) return;
-        let mensaje = data.validada ? "✅ ¡Tu canción ha sido aceptada!" : "❌ Tu canción no ha sido aceptada aún.";
-        estadoDiv.style.color = data.validada ? "green" : "red";
-        estadoDiv.innerHTML = mensaje;
+        let mensaje = "";
+        if (data.validada === true) {
+          mensaje = "✅ ¡Tu canción ha sido aceptada!";
+          estadoDiv.style.color = "green";
+        } else if (data.validada === false) {
+          mensaje = "❌ Tu canción no ha sido aceptada aún.";
+          estadoDiv.style.color = "red";
+        }
+        estadoDiv.innerText = mensaje;
         if (data.respuesta) {
           estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
         }
@@ -114,10 +121,10 @@
           div.className = "peticion " + (data.validada ? "validada" : "no-validada");
           div.innerHTML = `
             <strong>${data.cancion}</strong>
-            <div>
+            <div style="margin: 5px 0;">
               <button onclick="validar('${doc.id}', true)">✅</button>
               <button onclick="validar('${doc.id}', false)">❌</button>
-              <button onclick="eliminar('${doc.id}')">🗑️</button>
+              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
             </div>
             <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
           `;
@@ -139,23 +146,27 @@
     function responder(id, texto) {
       peticionesRef.doc(id).update({ respuesta: texto });
     }
-  </script>
 
-  <footer style="text-align:center; margin-top: 60px; font-size: 0.9em; color: #777;">
-    <hr style="margin-bottom: 15px;">
-    <div>
-      <a href="https://instagram.com/calientapistones" target="_blank">📸 CalientaPistones</a> |
-      <a href="https://tiktok.com/@calientapistones" target="_blank">💻 TikTok</a> |
-      <a href="https://instagram.com/tuning.racing_spain" target="_blank">📸 Tuning.racing_Spain</a> |
-      <a href="mailto:calientapistones@gmail.com">✉️ Email</a>
-    </div>
-    <p style="margin-top: 10px;">
-      Visita nuestra web: 
-      <a href="https://daniabvk.wixsite.com/calientapistones/inicio" target="_blank">Calienta Pistones💻</a>
-    </p>
-  </footer>
+    function mostrarHistorial() {
+      const historial = JSON.parse(localStorage.getItem("historialPeticiones") || "[]");
+      const divHistorial = document.getElementById("historialDiv");
+      if (historial.length === 0) {
+        divHistorial.innerHTML = "";
+        return;
+      }
+      let html = "<h4>🎧 Tus Peticiones Anteriores:</h4><ul>";
+      historial.forEach(p => {
+        html += `<li>${p.cancion}</li>`;
+      });
+      html += "</ul>";
+      divHistorial.innerHTML = html;
+    }
+
+    mostrarHistorial();
+  </script>
 </body>
 </html>
+
 
      
    
