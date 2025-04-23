@@ -75,17 +75,21 @@
     });
 
     function loginAdmin() {
-      const email = document.getElementById("emailInput").value;
-      const password = document.getElementById("passwordInput").value;
+  const email = document.getElementById("emailInput").value;
+  const password = document.getElementById("passwordInput").value;
 
-      firebase.auth().signInWithEmailAndPassword(email, password)
-        .then(() => {
-          alert("Administrador autenticado");
-        })
-        .catch(error => {
-          alert("Error: " + error.message);
-        });
-    }
+  console.log("Intentando loguearse con:", email); // Verificación en consola
+
+  firebase.auth().signInWithEmailAndPassword(email, password)
+    .then(() => {
+      alert("Administrador autenticado");
+    })
+    .catch(error => {
+      console.error("Error de login:", error); // Verificación de errores
+      alert("Error: " + error.message);
+    });
+}
+
 
     function logout() {
       firebase.auth().signOut().then(() => {
