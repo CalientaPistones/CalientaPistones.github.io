@@ -15,184 +15,154 @@
     .no-validada { background-color: #ffd1d1; }
     #estadoPeticion { margin-top: 10px; font-weight: bold; }
     .respuesta { font-style: italic; margin-top: 5px; color: #444; }
-    .historial-item { padding: 8px; margin: 5px 0; border-radius: 5px; }
+    .historial-item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
     .historial-verde { background-color: #d1ffd1; }
     .historial-rojo { background-color: #ffd1d1; }
-    .historial-neutro { background-color: #f0f0f0; }
+    .historial-neutro { background-color: #f9f9f9; }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">Calienta Pistones 🚗🔊 🎵</h1>
-  <h3 style="text-align:center;">🎶 Pide <strong>tu</strong> Canción 🎶</h3>
-
+  <h1>Calienta Pistones 🚗🔊 🎵🎵🎵</h1>
   <div id="formulario">
-    <input type="text" id="cancionInput" placeholder="Nombre de la canción y autor" />
+    <input type="text" id="cancionInput" placeholder="Nombre de la canción y del autor" />
     <input type="text" id="claveInput" placeholder="Introduce CP" /> 
     <button onclick="enviarPeticion()">Enviar</button>
     <div id="estadoPeticion"></div>
-    <h4>🎧 Tu Historial:</h4>
-    <div id="historialUsuario"></div>
   </div>
 
-  <audio id="sonidoNuevo" src="https://www.soundjay.com/button/sounds/beep-07.mp3" preload="auto"></audio>
+  <h3>🎶 Historial de Peticiones 🎶</h3>
+  <div id="historialUsuario"></div>
 
   <div class="admin-controls">
-    <p style="text-align:center;">Escanea el QR para que tu temazo suene tras ser validado</p>
-    <div style="text-align: center;">
-      <img src="https://static.wixstatic.com/media/8417de_6365259d41c14717b65c718cdcbdd674~mv2.png/v1/fill/w_233,h_233,al_c,q_85,enc_avif/qrcode.png" style="width: 120px;" alt="Código QR">
-    </div>
-    <h3 style="text-align:center;">Administrador</h3>
+    <h3>Administrador</h3>
     <input type="password" id="contrasenaInput" placeholder="Contraseña" />
     <button onclick="activarAdmin()">Entrar</button>
-    <div id="adminPanel" style="display:none;">
-      <h3>Peticiones recibidas</h3>
-      <div id="listaPeticiones"></div>
-    </div>
   </div>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
-    authDomain: "pide-tu-temazo.firebaseapp.com",
-    projectId: "pide-tu-temazo",
-  };
+  <div id="adminPanel" style="display:none;">
+    <h3>Peticiones recibidas</h3>
+    <div id="listaPeticiones"></div>
+  </div>
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const peticionesRef = db.collection("peticiones");
-  const estadoDiv = document.getElementById("estadoPeticion");
+  <script>
+    // Reemplaza con tu configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyC2rJv1hRFDhBJnTUeZBSM25rWqdrQpMh4",
+      authDomain: "pide-tu-temazo.firebaseapp.com",
+      databaseURL: "https://pide-tu-temazo-default-rtdb.firebaseio.com",
+      projectId: "pide-tu-temazo",
+      storageBucket: "pide-tu-temazo.firebasestorage.app",
+      messagingSenderId: "1030971206848",
+      appId: "1:1030971206848:web:0af3d1af966903727d5125",
+      measurementId: "G-HDGTVMWBKG"
+    };
 
-  let peticionActualID = null;
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const peticionesRef = db.collection("peticiones");
 
-  function enviarPeticion() {
-    const cancion = document.getElementById("cancionInput").value.trim();
-    const clave = document.getElementById("claveInput").value.trim();
-    const claveCorrecta = "CP";
+    const estadoDiv = document.getElementById("estadoPeticion");
 
-    if (cancion === "") return alert("Por favor, escribe una canción.");
-    if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
+    function enviarPeticion() {
+      const cancion = document.getElementById("cancionInput").value.trim();
+      const clave = document.getElementById("claveInput").value.trim();
+      const claveCorrecta = "CP"; // Cambia esto a tu clave correcta
 
-    peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
-      localStorage.setItem("peticionID", docRef.id);
-      peticionActualID = docRef.id;
-      escucharEstadoUsuario(docRef.id);
-      cargarHistorial();
-    });
+      if (cancion === "") return alert("Por favor, escribe una canción.");
+      if (clave !== claveCorrecta) return alert("Palabra clave incorrecta.");
 
-    document.getElementById("cancionInput").value = "";
-    document.getElementById("claveInput").value = "";
-  }
+      peticionesRef.add({ cancion, validada: false, respuesta: "" }).then(docRef => {
+        // Guardamos la petición en el historial local del usuario
+        let historial = JSON.parse(localStorage.getItem("peticionesUsuario") || "[]");
+        historial.push(docRef.id);
+        localStorage.setItem("peticionesUsuario", JSON.stringify(historial));
 
-  function escucharEstadoUsuario(id) {
-    peticionesRef.doc(id).onSnapshot(doc => {
-      const data = doc.data();
-      if (!data) return;
+        cargarHistorial(); // Recarga el historial con la nueva petición
+        new Audio('https://www.soundjay.com/button/beep-07.wav').play(); // Sonido cuando se envía la petición
+      });
 
-      let mensaje = data.validada ? "✅ ¡Tu canción ha sido aceptada!" : "❌ Tu canción no ha sido aceptada aún.";
-      estadoDiv.style.color = data.validada ? "green" : "red";
-      estadoDiv.innerHTML = mensaje;
+      document.getElementById("cancionInput").value = "";
+      document.getElementById("claveInput").value = "";
+    }
 
-      if (data.respuesta) {
-        estadoDiv.innerHTML += `<div class='respuesta'>💬 ${data.respuesta}</div>`;
-      }
-
-      cargarHistorial();
-    });
-  }
-
-  function cargarHistorial() {
-    const id = localStorage.getItem("peticionID");
-    if (!id) return;
-
-    peticionesRef.doc(id).onSnapshot(doc => {
-      const data = doc.data();
-      if (!data) return;
-
+    function cargarHistorial() {
+      const ids = JSON.parse(localStorage.getItem("peticionesUsuario") || "[]");
       const historialDiv = document.getElementById("historialUsuario");
       historialDiv.innerHTML = "";
 
-      const div = document.createElement("div");
-      let clase = "historial-neutro";
-      if (data.validada === true) clase = "historial-verde";
-      else if (data.validada === false) clase = "historial-rojo";
+      ids.forEach(id => {
+        peticionesRef.doc(id).onSnapshot(doc => {
+          const data = doc.data();
+          if (!data) return;
 
-      div.className = "historial-item " + clase;
-      div.innerHTML = `<strong>${data.cancion}</strong><br/>${data.respuesta ? "💬 " + data.respuesta : ""}`;
-      historialDiv.appendChild(div);
-    });
-  }
+          let clase = "historial-neutro";
+          if (data.validada === true) clase = "historial-verde";
+          else if (data.validada === false) clase = "historial-rojo";
 
-  const guardada = localStorage.getItem("peticionID");
-  if (guardada) {
-    peticionActualID = guardada;
-    escucharEstadoUsuario(guardada);
-    cargarHistorial();
-  }
+          const div = document.createElement("div");
+          div.className = "historial-item " + clase;
+          div.innerHTML = `<strong>${data.cancion}</strong><br/>${data.respuesta ? "💬 " + data.respuesta : ""}`;
 
-  let peticionesCargadas = new Set();
+          // Para evitar duplicados, borramos si ya hay uno con mismo texto
+          const existente = Array.from(historialDiv.children).find(d => d.innerText.includes(data.cancion));
+          if (existente) historialDiv.removeChild(existente);
 
-  function activarAdmin() {
-    const pass = document.getElementById("contrasenaInput").value;
-    if (pass === "admin123") {
-      document.getElementById("adminPanel").style.display = "block";
-      escucharPeticiones();
-    } else {
-      alert("Contraseña incorrecta.");
-    }
-  }
-
-  function escucharPeticiones() {
-    peticionesRef.onSnapshot(snapshot => {
-      const contenedor = document.getElementById("listaPeticiones");
-      contenedor.innerHTML = "";
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (!peticionesCargadas.has(doc.id)) {
-          peticionesCargadas.add(doc.id);
-          document.getElementById("sonidoNuevo").play();
-        }
-
-        const div = document.createElement("div");
-        div.className = "peticion " + (data.validada ? "validada" : "no-validada");
-
-        div.innerHTML = `
-          <strong>${data.cancion}</strong>
-          <div style="margin: 5px 0;">
-            <button onclick="validar('${doc.id}', true)">✅</button>
-            <button onclick="validar('${doc.id}', false)">❌</button>
-            <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
-          </div>
-          <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
-        `;
-        contenedor.appendChild(div);
+          historialDiv.appendChild(div);
+        });
       });
-    });
-  }
-
-  function validar(id, estado) {
-    peticionesRef.doc(id).update({ validada: estado });
-  }
-
-  function eliminar(id) {
-    if (confirm("¿Estás seguro de eliminar esta petición?")) {
-      peticionesRef.doc(id).delete();
     }
-  }
 
-  function responder(id, texto) {
-    peticionesRef.doc(id).update({ respuesta: texto });
-  }
-</script>
+    function activarAdmin() {
+      const pass = document.getElementById("contrasenaInput").value;
+      if (pass === "admin123") {
+        document.getElementById("adminPanel").style.display = "block";
+        escucharPeticiones();
+      } else {
+        alert("Contraseña incorrecta.");
+      }
+    }
+
+    function escucharPeticiones() {
+      peticionesRef.onSnapshot(snapshot => {
+        const contenedor = document.getElementById("listaPeticiones");
+        contenedor.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "peticion " + (data.validada ? "validada" : "no-validada");
+
+          div.innerHTML = `
+            <strong>${data.cancion}</strong>
+            <div style="margin: 5px 0;">
+              <button onclick="validar('${doc.id}', true)">✅</button>
+              <button onclick="validar('${doc.id}', false)">❌</button>
+              <button onclick="eliminar('${doc.id}')">🗑️ Eliminar</button>
+            </div>
+            <textarea placeholder="Respuesta personalizada..." onchange="responder('${doc.id}', this.value)">${data.respuesta || ""}</textarea>
+          `;
+          contenedor.appendChild(div);
+        });
+      });
+    }
+
+    function validar(id, estado) {
+      peticionesRef.doc(id).update({ validada: estado });
+    }
+
+    function eliminar(id) {
+      if (confirm("¿Estás seguro de eliminar esta petición?")) {
+        peticionesRef.doc(id).delete();
+      }
+    }
+
+    function responder(id, texto) {
+      peticionesRef.doc(id).update({ respuesta: texto });
+    }
+
+    // Cargar historial de peticiones al cargar la página
+    cargarHistorial();
+  </script>
 </body>
 </html>
 
-     
-
-       
-      
-       
-     
-
-  
-   
+    
